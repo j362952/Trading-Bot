@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+data_cache/
+reports/
+
+# MarketScreener: Datenbank + lokale Einstellungen (enthält API-Key)
+MarketScreener/data/
+
+# --- ergänzt beim Aufräumen 2026-10-14 ---
+# Archivierter MarketScreener: Datenbank + settings.json mit API-Key
+_archiv/MarketScreener/data/
+# Lokale Claude-Einstellungen
+.claude/settings.local.json
+# Laufzeit-Logs
+*.log

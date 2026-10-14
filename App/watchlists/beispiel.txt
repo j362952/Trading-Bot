@@ -1,0 +1,8 @@
+# Eigene Watchlist: ein Symbol pro Zeile (Yahoo-Schreibweise).
+# Alles hinter '#' ist Kommentar. Nutzbar über den Dateinamen:
+#   uv run screener.py beispiel
+#   uv run news.py --universe beispiel
+AAPL      # Apple
+MSFT      # Microsoft
+NOVN.SW   # Novartis (SIX)
+SAP.DE    # SAP (Xetra)

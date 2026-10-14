@@ -1,0 +1,7 @@
+# Eigene Watchlist: ein Symbol pro Zeile (Yahoo-Schreibweise),
+# '#' beginnt einen Kommentar. Der Dateiname (ohne .txt) erscheint
+# in der GUI als "Watchlist: beispiel".
+AAPL      # Apple
+MSFT      # Microsoft
+SAP.DE    # SAP (Xetra)
+NOVN.SW   # Novartis (SIX)
