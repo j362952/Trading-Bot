@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 
 from ..config import DATA_CACHE_DIR, PROJECT_ROOT
+from .base import aligned_closes
 
 # Fundamentaldaten: primär der Daten-Hub, sonst die alte (archivierte) Screener-DB
 HUB_DB = DATA_CACHE_DIR / "hub.db"
@@ -58,8 +59,7 @@ class VolAdjMomentumQuality:
         return f"MoQu Top{self.top_n} ({self.lookback}d/vol{self.vol_n}{q})"
 
     def target_matrix(self, bars: dict[str, pd.DataFrame]) -> pd.DataFrame:
-        closes = pd.DataFrame({s: df["Close"] for s, df in bars.items()}).sort_index()
-        closes = closes[closes.index.notna()]
+        closes = aligned_closes(bars)  # ein Kalender, Feiertagslücken überbrückt
 
         momentum = closes.shift(self.skip) / closes.shift(self.lookback) - 1
         vol = closes.pct_change(fill_method=None).rolling(self.vol_n).std()

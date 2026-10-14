@@ -17,6 +17,8 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from .base import aligned_closes
+
 
 @dataclass
 class MomentumRotation:
@@ -33,7 +35,7 @@ class MomentumRotation:
         return f"Momentum-Rotation Top{self.top_n} ({self.lookback}d)"
 
     def target_matrix(self, bars: dict[str, pd.DataFrame]) -> pd.DataFrame:
-        closes = pd.DataFrame({s: df["Close"] for s, df in bars.items()}).sort_index()
+        closes = aligned_closes(bars)  # ein Kalender, Feiertagslücken überbrückt
         # Momentum: Rendite von t-lookback bis t-skip
         momentum = closes.shift(self.skip) / closes.shift(self.lookback) - 1
 

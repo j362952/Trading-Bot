@@ -56,6 +56,27 @@ def position_matrix(strategy, bars: dict[str, pd.DataFrame]) -> pd.DataFrame:
     return matrix.ffill().fillna(0)
 
 
+MAX_FILL_DAYS = 5  # so viele Kalender-Lücken in Folge werden überbrückt
+
+
+def aligned_closes(bars: dict[str, pd.DataFrame],
+                   max_fill: int = MAX_FILL_DAYS) -> pd.DataFrame:
+    """Schlusskurse aller Titel auf EINEM Kalender (Vereinigung aller Handelstage).
+
+    Gemischte Universen (z.B. US + Europa + Asien) haben verschiedene
+    Feiertage. Ohne Auffüllen hat jeder Titel an fremden Feiertagen NaN —
+    pct_change() erzeugt dort Lücken, und rolling(n).std() wird für das ganze
+    Fenster NaN. Folge: Titel fallen aus Rankings (bei Global 2000 praktisch
+    alle). Deshalb: letzten Kurs bis zu max_fill Tage fortschreiben (= an
+    einem Feiertag ändert sich der Kurs nicht). Vor dem ersten und lange nach
+    dem letzten Kurs wird nichts erfunden.
+    """
+    closes = pd.DataFrame({s: df["Close"] for s, df in bars.items()}).sort_index()
+    closes = closes[closes.index.notna()]
+    closes = closes[~closes.index.duplicated(keep="last")]
+    return closes.ffill(limit=max_fill)
+
+
 def param_fields(strategy_cls) -> list[dataclasses.Field]:
     """Einstellbare Parameter einer Strategie (für GUI und Doku)."""
     return [f for f in dataclasses.fields(strategy_cls)

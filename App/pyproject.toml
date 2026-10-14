@@ -1,12 +1,14 @@
 [project]
 name = "tradingbot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Trading-Bot mit Risk-Management, Backtests, Daten-Hub und Claude-Integration (MCP, Sentiment)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=0.69",
     "ib_async>=2.1",
     "lxml>=6.1.1",
+    "mcp>=2.2",
     "pandas>=3.0.3",
     "torch>=2.12.1",
     "transformers>=5.13.0",

@@ -3,6 +3,7 @@
     uv run run_backtests.py beispiel                # Watchlist
     uv run run_backtests.py dax --start 2016-01-01  # Index
     uv run run_backtests.py beispiel --sentiment    # mit News-Gate (FinBERT)
+    uv run run_backtests.py beispiel --sentiment --sentiment-backend claude
 
 Vergleicht jede registrierte Strategie (mit Default-Parametern und
 aktivem Risk-Management) gegen Buy & Hold über dasselbe Universum.
@@ -31,7 +32,9 @@ def main() -> None:
     parser.add_argument("--start", default="2015-01-01")
     parser.add_argument("--equity", type=float, default=100_000)
     parser.add_argument("--sentiment", action="store_true",
-                        help="News-Sentiment-Gate aktivieren (lädt FinBERT)")
+                        help="News-Sentiment-Gate aktivieren")
+    parser.add_argument("--sentiment-backend", choices=["finbert", "claude"],
+                        default=None, help="Sentiment-Modell (Default: Einstellung)")
     args = parser.parse_args()
 
     symbols = list(load_universe(args.universe)["symbol"])
@@ -50,8 +53,9 @@ def main() -> None:
     sentiment = None
     if args.sentiment:
         from tradingbot.sentiment.history import daily_sentiment
-        print("Score News-Archiv (FinBERT) ...")
-        sentiment = {s: daily_sentiment(s, refresh=False) for s in bars}
+        print(f"Score News-Archiv ({args.sentiment_backend or 'laut Einstellung'}) ...")
+        sentiment = {s: daily_sentiment(s, refresh=False, backend=args.sentiment_backend)
+                     for s in bars}
 
     rows = []
     for key, cls in STRATEGIES.items():

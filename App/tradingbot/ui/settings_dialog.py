@@ -84,7 +84,7 @@ class SettingsDialog(tk.Toplevel):
     # ------------------------------------------------------ Sentiment/Makro
 
     def _build_gates(self, tab) -> None:
-        sent = ttk.LabelFrame(tab, text="News-Sentiment-Gate (FinBERT)", padding=12)
+        sent = ttk.LabelFrame(tab, text="News-Sentiment-Gate", padding=12)
         sent.pack(anchor="nw", fill="x", padx=8, pady=8)
         self.sent_var = tk.BooleanVar(value=bool(self.settings.get("sentiment_enabled")))
         ttk.Checkbutton(sent, text="Einstiege bei negativer Nachrichtenlage blockieren",
@@ -99,6 +99,20 @@ class SettingsDialog(tk.Toplevel):
         self.sent_days = ttk.Entry(row, width=6)
         self.sent_days.insert(0, str(self.settings.get("sentiment_days", 7)))
         self.sent_days.pack(side="left", padx=4)
+        row = ttk.Frame(sent)
+        row.pack(anchor="w", pady=4)
+        ttk.Label(row, text="Modell:").pack(side="left")
+        self.backend_var = tk.StringVar(value=self.settings.get("sentiment_backend", "finbert"))
+        ttk.Combobox(row, state="readonly", width=9, textvariable=self.backend_var,
+                     values=["finbert", "claude"]).pack(side="left", padx=4)
+        ttk.Label(row, text="Claude-Modell:").pack(side="left", padx=(12, 0))
+        self.claude_model_var = tk.StringVar(
+            value=self.settings.get("claude_model", "claude-haiku-5-5"))
+        ttk.Entry(row, textvariable=self.claude_model_var, width=20).pack(side="left", padx=4)
+        ttk.Label(sent, justify="left", text=(
+            "finbert = lokal & kostenlos · claude = Claude API (Key unter API-Keys),\n"
+            "bewertet Bezug zur Firma + Begründung im Log; bei Fehlern Fallback auf FinBERT.\n"
+            "Vergleich beider Modelle: uv run run_sentiment_eval.py")).pack(anchor="w")
 
         macro = ttk.LabelFrame(tab, text="Makro-Schicht", padding=12)
         macro.pack(anchor="nw", fill="x", padx=8, pady=(0, 8))
@@ -168,7 +182,8 @@ class SettingsDialog(tk.Toplevel):
         self.key_vars = {}
         for label, key in [("FMP-Key (Fundamental/Earnings/Events)", "fmp_api_key"),
                            ("Tiingo-Key (Kurse/Intraday-IEX)", "tiingo_api_key"),
-                           ("FRED-Key (Makro — optional)", "fred_api_key")]:
+                           ("FRED-Key (Makro — optional)", "fred_api_key"),
+                           ("Anthropic-Key (Claude-Sentiment)", "anthropic_api_key")]:
             row = ttk.Frame(keys)
             row.pack(anchor="w", pady=2)
             ttk.Label(row, text=label, width=34).pack(side="left")
@@ -220,6 +235,8 @@ class SettingsDialog(tk.Toplevel):
             s["sentiment_days"] = int(self.sent_days.get())
         except ValueError:
             pass
+        s["sentiment_backend"] = self.backend_var.get()
+        s["claude_model"] = self.claude_model_var.get().strip() or "claude-haiku-5-5"
         s["macro_filter"] = self.macro_var.get()
         s["event_blackout"] = self.event_var.get()
         if self.show_broker:

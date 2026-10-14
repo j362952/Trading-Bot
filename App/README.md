@@ -25,7 +25,75 @@ uv run run_backtests.py beispiel   # alle Strategien über eine Watchlist
 uv run run_validation.py           # Robustheits-Harness (Zufallsfenster)
 uv run main.py SPY                 # Einzel-Backtest SMA vs. Buy & Hold
 uv run news.py AAPL NOVN.SW        # News-Sentiment (FinBERT)
+uv run news.py AAPL --backend claude   # … mit Claude (inkl. Begründung)
+uv run run_sentiment_eval.py run   # FinBERT vs. Claude messen (evals/README.md)
+uv run mcp_server.py               # MCP-Server für Claude (siehe unten)
+uv run python -m unittest discover -s tests   # Tests
 ```
+
+## Claude-Integration
+
+Zwei Bausteine, beide optional — ohne Anthropic-Key läuft alles wie bisher.
+
+### 1. MCP-Server: den Bot mit Claude befragen
+
+`mcp_server.py` stellt Daten-Hub, Kurs-Cache, News-Archiv und Bot-Protokoll
+als [MCP](https://modelcontextprotocol.io)-Werkzeuge bereit. Damit lassen sich in
+Claude Desktop oder Claude Code Fragen stellen wie *„Warum hat MoQu diesen Monat
+genau diese Titel gewählt?"*, *„Würde das Sentiment-Gate bei SAP gerade blockieren?"*
+oder *„Welche DAX-Titel haben die höchste operative Marge?"*.
+
+| Werkzeug | liefert |
+|---|---|
+| `data_overview` | Tabellen/Spalten beider DBs, Universen, Datenfrische, letzte Abruffehler |
+| `run_sql` | eine lesende SQL-Abfrage auf hub.db oder bot.db |
+| `company_profile` | Stammdaten, Quartale, TTM-ROE/Marge/Wachstum, Kursstatistik, Screener-Scores |
+| `price_history` | Kursreihe (D/W/M) mit Rendite, Volatilität, Max-Drawdown |
+| `moqu_ranking` | MoQu-Auswahl zum Stichtag mit allen Ranking-Bausteinen je Titel + ausgeschlossene Titel mit Grund |
+| `news_sentiment` | Schlagzeilen mit FinBERT- und Claude-Scores, Gate-Schwelle |
+| `bot_activity` | Entscheidungs-Log, Orders, Equity, Stops, relevante Einstellungen (ohne Keys) |
+
+**Bewusst nur lesend:** Datenbanken werden schreibgeschützt geöffnet, `run_sql`
+erlaubt per SQLite-Authorizer nur Lese-Operationen (mit Zeit- und Zeilenlimit),
+Kurse kommen nur aus dem lokalen Cache. Der Server kann weder handeln noch
+Einstellungen ändern. `moqu_ranking` rechnet mit denselben Formeln und Parametern
+wie die Strategie — ein Test (`tests/test_mcp_tools.py`) prüft, dass die Auswahl
+an Rebalance-Tagen exakt übereinstimmt.
+
+Einrichten — Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "tradingbot": {
+      "command": "uv",
+      "args": ["--directory", "C:\\SW\\TradingBot\\App", "run", "mcp_server.py"]
+    }
+  }
+}
+```
+
+Claude Code: `claude mcp add tradingbot -- uv --directory C:\SW\TradingBot\App run mcp_server.py`
+
+### 2. Claude als Sentiment-Modell (Alternative zu FinBERT)
+
+Zahnrad → *Sentiment & Makro* → Modell `claude`, Key unter *API-Keys*
+(oder Umgebungsvariable `ANTHROPIC_API_KEY`). Unterschiede zu FinBERT:
+
+- bewertet **mit Bezug zur Firma**: Meldungen, die gar nicht von der Aktie handeln
+  (im Yahoo-Feed häufig), zählen als neutral statt die Stimmung zu verfälschen
+- liefert je Schlagzeile eine **Kurzbegründung** — blockiert das Gate einen Einstieg,
+  steht die auslösende Meldung samt Begründung im Entscheidungs-Log
+- strukturierte Ausgabe über ein erzwungenes Tool (JSON-Schema), Schlagzeilen als
+  untrusted Input gekapselt, jede Antwort validiert
+- **fällt bei Fehlern automatisch auf FinBERT zurück** (Key fehlt, API nicht
+  erreichbar) — das Gate bleibt scharf, statt still offen zu stehen
+- eigener Score-Cache (`data_cache/news_scores_claude/`), jede Schlagzeile wird nur
+  einmal bewertet
+
+Welches Modell besser ist, misst `run_sentiment_eval.py` auf handgelabelten
+Schlagzeilen (Accuracy, Macro-F1, erkannte negative Meldungen, Fehlblockaden,
+Token-Verbrauch) — Anleitung und Label-Regeln in [evals/README.md](evals/README.md).
 
 ## GUI-Kurzanleitung (eine GUI, vier Seiten — GUI_KONZEPT.md)
 
@@ -91,6 +159,10 @@ App/
 ├── gui_4_backtest.py        # Seite 4 einzeln öffnen
 ├── run_backtests.py         # CLI: Strategie-Suite über ein Universum
 ├── run_validation.py        # CLI: Robustheits-Harness (Zufallsfenster)
+├── run_sentiment_eval.py    # CLI: FinBERT vs. Claude auf gelabelten Schlagzeilen
+├── mcp_server.py            # MCP-Server (lesender Zugriff für Claude)
+├── evals/                   # Label-Datensatz + Anleitung Sentiment-Evaluation
+├── tests/                   # unittest: Claude-Sentiment, MCP-Werkzeuge, Eval-Metriken
 ├── STRATEGIE.md             # Methodik + Backtest-Protokoll (maßgeblich)
 ├── GUI_KONZEPT.md           # Zielarchitektur GUI + Daten-Hub (+ Stand)
 ├── tradingbot/
@@ -107,7 +179,8 @@ App/
 │   ├── broker/              # Interface + PaperBroker + IBKR (ib_async)
 │   ├── data/                # hub.py (Daten-Hub), feeds.py, fundamentals.py,
 │   │                        #   Kurse (CSV-Cache), News-Archiv, Universen
-│   ├── sentiment/           # FinBERT + Sentiment-Historie (gecacht)
+│   ├── mcp_tools.py         # Werkzeuge des MCP-Servers (rein lesend)
+│   ├── sentiment/           # FinBERT, Claude + Sentiment-Historie (gecacht, Fallback)
 │   └── ui/                  # GUI: app.py + seite1_daten.py … seite4_backtest.py
 ├── data_cache/              # hub.db, Kurse, News, Bot-DB, Profile (unversioniert)
 ├── reports/                 # Backtest-/Screener-/News-CSVs
@@ -126,6 +199,9 @@ App/
 - [x] Mehrere Strategien parallel mit Kapital-Budgets
 - [x] ValueScreener in der Bot-GUI (Screening-Registry, Hub-Datenbasis)
 - [x] Equity-Kurve als Grafik (TradeBot-Seite)
+- [x] MCP-Server: Bot-Daten und MoQu-Ranking in Claude abfragbar
+- [x] Claude als alternatives Sentiment-Modell (mit Fallback auf FinBERT)
+- [ ] Sentiment-Evaluation mit ≥200 gelabelten Schlagzeilen durchführen → Modellwahl begründen
 - [ ] Backtest-Suite über DAX/SMI/eigene Watchlists → STRATEGIE.md §4
 - [ ] Wochen im Paper-Betrieb (erst Simulation, dann IBKR Paper)
 - [ ] Screener-Ranking als Watchlist-Quelle für den Bot (Kopplung Seite 3 → Seite 2)

@@ -1,4 +1,4 @@
-"""FinBERT-Sentiment: bewertet Finanz-Schlagzeilen lokal und kostenlos.
+"""FinBERT-Sentiment (Standard-Backend): bewertet Finanz-Schlagzeilen lokal und kostenlos.
 
 FinBERT (ProsusAI/finbert) ist ein BERT-Modell, das auf Finanztexten
 nachtrainiert wurde. Es klassifiziert jeden Text als positiv/negativ/
@@ -34,3 +34,21 @@ def score_headlines(headlines: list[str]) -> list[float]:
         probs = {entry["label"]: entry["score"] for entry in label_probs}
         scores.append(probs.get("positive", 0.0) - probs.get("negative", 0.0))
     return scores
+
+
+def classify_headlines(headlines: list[str]) -> list[dict]:
+    """Wie score_headlines, zusätzlich mit Klassen-Label (für Evaluation).
+
+    Liefert je Schlagzeile {"label": positive|negative|neutral, "score": float}.
+    """
+    if not headlines:
+        return []
+    results = _pipeline()(list(headlines), truncation=True)
+    out = []
+    for label_probs in results:
+        probs = {entry["label"]: entry["score"] for entry in label_probs}
+        out.append({
+            "label": max(probs, key=probs.get),
+            "score": probs.get("positive", 0.0) - probs.get("negative", 0.0),
+        })
+    return out

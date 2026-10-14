@@ -55,7 +55,7 @@ class BacktestPage(ttk.Frame):
         self.btn_run.pack(side="left")
         ttk.Button(bar, text="Profil speichern", command=self.save).pack(side="left", padx=8)
         self.sent_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(bar, text="Sentiment-Gate (lädt FinBERT)",
+        ttk.Checkbutton(bar, text="Sentiment-Gate (Modell: Zahnrad)",
                         variable=self.sent_var).pack(side="left", padx=8)
 
         cap_row = ttk.Frame(left)
@@ -213,8 +213,10 @@ class BacktestPage(ttk.Frame):
             if self.sent_var.get():
                 from ..sentiment.history import daily_sentiment
 
-                say("Score News-Archiv (FinBERT) …")
-                sentiment = {sym: daily_sentiment(sym, refresh=False) for sym in bars}
+                backend = s.get("sentiment_backend", "finbert")
+                say(f"Score News-Archiv ({backend}) …")
+                sentiment = {sym: daily_sentiment(sym, refresh=False, backend=backend)
+                             for sym in bars}
 
             sectors = {}
             try:

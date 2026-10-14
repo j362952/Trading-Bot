@@ -46,6 +46,10 @@ DEFAULT_SETTINGS: dict = {
     "sentiment_enabled": True,
     "sentiment_min": -0.2,
     "sentiment_days": 7,
+    # Sentiment-Modell: "finbert" (lokal, kostenlos) oder "claude" (Claude API,
+    # braucht anthropic_api_key; fällt bei Fehlern automatisch auf FinBERT zurück)
+    "sentiment_backend": "finbert",
+    "claude_model": "claude-haiku-5-5",
     # Risk-Management (Felder von risk.RiskConfig)
     "risk": {},
     # Broker: "paper" oder "ibkr"
@@ -68,6 +72,9 @@ DEFAULT_SETTINGS: dict = {
     # FRED-API-Key (optional, kostenlos: fred.stlouisfed.org/docs/api/api_key.html)
     # — macht den Makro-Abruf zuverlässig, wenn fredgraph.csv blockiert
     "fred_api_key": "",
+    # Anthropic-API-Key für das Claude-Sentiment (Umgebungsvariable
+    # ANTHROPIC_API_KEY hat Vorrang)
+    "anthropic_api_key": "",
 }
 
 
@@ -101,7 +108,7 @@ def save_settings(settings: dict, profile: str = "live") -> None:
 def get_api_key(name: str) -> str:
     """API-Key: Umgebungsvariable schlägt settings.json.
 
-    name: "fmp" oder "tiingo".
+    name: "fmp", "tiingo", "fred" oder "anthropic".
     """
     env = os.environ.get(f"{name.upper()}_API_KEY", "").strip()
     return env or str(load_settings().get(f"{name}_api_key", "")).strip()
@@ -111,7 +118,7 @@ def _export_keys_to_env(settings: dict) -> None:
     """Keys aus den Settings in die Umgebung spiegeln, damit auch Module,
     die nur Umgebungsvariablen lesen (z.B. der Tiingo-Kursprovider),
     sie sehen. Bereits gesetzte Umgebungsvariablen gewinnen."""
-    for name in ("fmp", "tiingo", "fred"):
+    for name in ("fmp", "tiingo", "fred", "anthropic"):
         env_name = f"{name.upper()}_API_KEY"
         value = str(settings.get(f"{name}_api_key", "")).strip()
         if value and not os.environ.get(env_name):

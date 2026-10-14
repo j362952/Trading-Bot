@@ -302,17 +302,31 @@ class TradingEngine:
     def _sentiment_ok(self, symbol: str) -> bool:
         if not self.settings.get("sentiment_enabled", False):
             return True
+        days = int(self.settings.get("sentiment_days", 7))
+        backend = self.settings.get("sentiment_backend", "finbert")
         try:
-            from .sentiment.history import current_sentiment
+            from .sentiment import history
 
-            score = current_sentiment(symbol, days=int(self.settings.get("sentiment_days", 7)))
+            score = history.current_sentiment(symbol, days=days, backend=backend)
         except Exception as exc:
             self._log(f"{symbol}: Sentiment nicht verfügbar ({exc}) — Gate offen", "warn")
             return True
         if score is None:
             return True  # keine News = neutral
+        used = history.last_backend.get(symbol, backend)
+        if used != backend:
+            self._log(f"{symbol}: Sentiment-Backend {backend} nicht verfügbar — "
+                      f"Fallback {used}", "warn")
         if score < float(self.settings.get("sentiment_min", -0.2)):
-            self._log(f"{symbol}: Einstieg blockiert — News-Sentiment {score:+.2f} "
-                      f"unter Schwelle {self.settings.get('sentiment_min')}")
+            why = ""
+            try:  # Claude liefert Begründungen: die negativste Meldung ins Log
+                worst = history.recent_scored(symbol, days=days, backend=used).iloc[0]
+                why = f" — z.B. \"{str(worst['title'])[:80]}\""
+                if isinstance(worst.get("reason"), str) and worst["reason"]:
+                    why += f" ({worst['reason']})"
+            except Exception:
+                pass
+            self._log(f"{symbol}: Einstieg blockiert — News-Sentiment {score:+.2f} ({used}) "
+                      f"unter Schwelle {self.settings.get('sentiment_min')}{why}")
             return False
         return True

@@ -7,6 +7,10 @@ Ein aktives Projekt, ein Archiv:
 | [`App/`](App) | **Das aktive Projekt**: eine GUI mit vier Seiten (Daten · TradeBot · ValueScreener · Backtest) über einem gemeinsamen Daten-Hub; Handelsstrategien + Risk-Management, Backtests/Robustheits-Harness, Screening, Broker-Anbindung (Paper/IBKR) | `cd App && uv run bot_gui.py` |
 | [`_archiv/MarketScreener/`](_archiv/MarketScreener) | Ursprüngliches Screener-Tool — abgelöst durch die ValueScreener-Seite; Daten in den Hub migriert, Code als Referenz archiviert (venv entfernt; `uv run` legt bei Bedarf ein neues an) | — |
 
+Claude-Integration (optional): ein MCP-Server macht Bot-Daten und MoQu-Ranking in
+Claude abfragbar, Claude kann FinBERT als Sentiment-Modell ersetzen — inklusive
+Evaluation beider Modelle. Details: [App/README.md](App/README.md#claude-integration).
+
 Einzelne GUI-Seiten lassen sich auch separat öffnen:
 `gui_1_daten.py` … `gui_4_backtest.py` im App-Ordner.
 
