@@ -1,66 +1,66 @@
 # TradingBot
 
-Handelt anhand adaptierbarer, empirisch belegter Strategien — gesteuert
-über eine GUI, abgesichert durch eine eigene Risk-Management-Schicht,
-wahlweise gegen die eingebaute Simulation (PaperBroker) oder Interactive
-Brokers (Paper/Live über TWS/IB Gateway).
+Trades according to adaptable, empirically grounded strategies: controlled from a
+GUI, protected by its own risk-management layer, and running either against the
+built-in simulation (PaperBroker) or Interactive Brokers (paper/live via TWS/IB Gateway).
 
-Die Handels- und Risiko-Methodik steht in [STRATEGIE.md](STRATEGIE.md) —
-diese Datei ist zugleich die Grundlage für die Weiterentwicklung.
+The trading and risk methodology is documented in [STRATEGIE.md](STRATEGIE.md)
+(German); it is also the basis for further development.
 
-## Start
+## Getting started
 
 ```bash
 cd App
-uv run bot_gui.py            # GUI mit allen vier Seiten (empfohlen)
+uv run bot_gui.py            # GUI with all four pages (recommended)
 
-# einzelne Seiten separat öffnen (unabhängig voneinander)
-uv run gui_1_daten.py             # Seite 1: Daten (Hub, Abrufe)
-uv run gui_2_tradebot.py          # Seite 2: TradeBot (Profil "live")
-uv run gui_3_valuescreener.py     # Seite 3: ValueScreener
-uv run gui_4_backtest.py          # Seite 4: Backtest (Profil "test")
+# open individual pages on their own (independent of each other)
+uv run gui_1_daten.py             # page 1: Data (hub, fetches)
+uv run gui_2_tradebot.py          # page 2: TradeBot (profile "live")
+uv run gui_3_valuescreener.py     # page 3: ValueScreener
+uv run gui_4_backtest.py          # page 4: Backtest (profile "test")
 
-# CLI-Werkzeuge
-uv run run_backtests.py beispiel   # alle Strategien über eine Watchlist
-uv run run_validation.py           # Robustheits-Harness (Zufallsfenster)
-uv run main.py SPY                 # Einzel-Backtest SMA vs. Buy & Hold
-uv run news.py AAPL NOVN.SW        # News-Sentiment (FinBERT)
-uv run news.py AAPL --backend claude   # … mit Claude (inkl. Begründung)
-uv run run_sentiment_eval.py run   # FinBERT vs. Claude messen (evals/README.md)
-uv run mcp_server.py               # MCP-Server für Claude (siehe unten)
-uv run python -m unittest discover -s tests   # Tests
+# CLI tools
+uv run run_backtests.py beispiel   # all strategies over a watchlist
+uv run run_validation.py           # robustness harness (random windows)
+uv run main.py SPY                 # single backtest SMA vs. buy & hold
+uv run news.py AAPL NOVN.SW        # news sentiment (FinBERT)
+uv run news.py AAPL --backend claude   # … with Claude (incl. reasoning)
+uv run run_sentiment_eval.py run   # measure FinBERT vs. Claude (evals/README.md)
+uv run mcp_server.py               # MCP server for Claude (see below)
+uv run python -m unittest discover -s tests   # tests
 ```
 
-## Claude-Integration
+## Claude integration
 
-Zwei Bausteine, beide optional — ohne Anthropic-Key läuft alles wie bisher.
+Two building blocks, both optional: without an Anthropic API key everything runs as before.
 
-### 1. MCP-Server: den Bot mit Claude befragen
+### 1. MCP server: ask Claude about the bot
 
-`mcp_server.py` stellt Daten-Hub, Kurs-Cache, News-Archiv und Bot-Protokoll
-als [MCP](https://modelcontextprotocol.io)-Werkzeuge bereit. Damit lassen sich in
-Claude Desktop oder Claude Code Fragen stellen wie *„Warum hat MoQu diesen Monat
-genau diese Titel gewählt?"*, *„Würde das Sentiment-Gate bei SAP gerade blockieren?"*
-oder *„Welche DAX-Titel haben die höchste operative Marge?"*.
+`mcp_server.py` exposes the data hub, price cache, news archive and bot log as
+[MCP](https://modelcontextprotocol.io) tools. This lets you ask questions in
+Claude Desktop or Claude Code such as *"Why did MoQu pick exactly these stocks this
+month?"*, *"Would the sentiment gate block SAP right now?"* or *"Which DAX
+stocks have the highest operating margin?"*.
 
-| Werkzeug | liefert |
+| Tool | Returns |
 |---|---|
-| `data_overview` | Tabellen/Spalten beider DBs, Universen, Datenfrische, letzte Abruffehler |
-| `run_sql` | eine lesende SQL-Abfrage auf hub.db oder bot.db |
-| `company_profile` | Stammdaten, Quartale, TTM-ROE/Marge/Wachstum, Kursstatistik, Screener-Scores |
-| `price_history` | Kursreihe (D/W/M) mit Rendite, Volatilität, Max-Drawdown |
-| `moqu_ranking` | MoQu-Auswahl zum Stichtag mit allen Ranking-Bausteinen je Titel + ausgeschlossene Titel mit Grund |
-| `news_sentiment` | Schlagzeilen mit FinBERT- und Claude-Scores, Gate-Schwelle |
-| `bot_activity` | Entscheidungs-Log, Orders, Equity, Stops, relevante Einstellungen (ohne Keys) |
+| `data_overview` | Tables/columns of both DBs, universes, data freshness, recent fetch errors |
+| `run_sql` | One read-only SQL query against hub.db or bot.db |
+| `company_profile` | Master data, quarterly figures, TTM ROE/margin/growth, price statistics, screener scores |
+| `price_history` | Price series (D/W/M) with return, volatility, max drawdown |
+| `moqu_ranking` | MoQu selection as of a given date with every ranking component per stock, plus excluded stocks with the reason |
+| `news_sentiment` | Headlines with FinBERT and Claude scores, gate threshold |
+| `bot_activity` | Decision log, orders, equity, stops, relevant settings (without keys) |
 
-**Bewusst nur lesend:** Datenbanken werden schreibgeschützt geöffnet, `run_sql`
-erlaubt per SQLite-Authorizer nur Lese-Operationen (mit Zeit- und Zeilenlimit),
-Kurse kommen nur aus dem lokalen Cache. Der Server kann weder handeln noch
-Einstellungen ändern. `moqu_ranking` rechnet mit denselben Formeln und Parametern
-wie die Strategie — ein Test (`tests/test_mcp_tools.py`) prüft, dass die Auswahl
-an Rebalance-Tagen exakt übereinstimmt.
+MoQu is the main strategy: volatility-adjusted momentum combined with a quality score.
 
-Einrichten — Claude Desktop (`claude_desktop_config.json`):
+**Read-only by design:** databases are opened read-only, `run_sql` only allows read
+operations via a SQLite authorizer (with time and row limits), and prices come only
+from the local cache. The server can neither trade nor change settings. `moqu_ranking`
+uses the same formulas and parameters as the strategy; a test
+(`tests/test_mcp_tools.py`) checks that the selection matches exactly on rebalance days.
+
+Setup for Claude Desktop (`claude_desktop_config.json`):
 
 ```json
 {
@@ -75,137 +75,134 @@ Einrichten — Claude Desktop (`claude_desktop_config.json`):
 
 Claude Code: `claude mcp add tradingbot -- uv --directory C:\SW\TradingBot\App run mcp_server.py`
 
-### 2. Claude als Sentiment-Modell (Alternative zu FinBERT)
+### 2. Claude as sentiment model (alternative to FinBERT)
 
-Zahnrad → *Sentiment & Makro* → Modell `claude`, Key unter *API-Keys*
-(oder Umgebungsvariable `ANTHROPIC_API_KEY`). Unterschiede zu FinBERT:
+Gear icon → *Sentiment & Makro* → model `claude`, key under *API-Keys*
+(or environment variable `ANTHROPIC_API_KEY`). Differences from FinBERT:
 
-- bewertet **mit Bezug zur Firma**: Meldungen, die gar nicht von der Aktie handeln
-  (im Yahoo-Feed häufig), zählen als neutral statt die Stimmung zu verfälschen
-- liefert je Schlagzeile eine **Kurzbegründung** — blockiert das Gate einen Einstieg,
-  steht die auslösende Meldung samt Begründung im Entscheidungs-Log
-- strukturierte Ausgabe über ein erzwungenes Tool (JSON-Schema), Schlagzeilen als
-  untrusted Input gekapselt, jede Antwort validiert
-- **fällt bei Fehlern automatisch auf FinBERT zurück** (Key fehlt, API nicht
-  erreichbar) — das Gate bleibt scharf, statt still offen zu stehen
-- eigener Score-Cache (`data_cache/news_scores_claude/`), jede Schlagzeile wird nur
-  einmal bewertet
+- rates **relative to the company**: headlines that are not about the stock at all
+  (common in the Yahoo feed) count as neutral instead of distorting the sentiment
+- returns a **short reason** per headline: when the gate blocks an entry, the
+  triggering headline and its reason are written to the decision log
+- structured output via a forced tool call (JSON schema), headlines wrapped as
+  untrusted input, every response validated
+- **falls back to FinBERT automatically on errors** (missing key, API unreachable),
+  so the gate stays armed instead of silently staying open
+- separate score cache (`data_cache/news_scores_claude/`); each headline is rated only once
 
-Welches Modell besser ist, misst `run_sentiment_eval.py` auf handgelabelten
-Schlagzeilen (Accuracy, Macro-F1, erkannte negative Meldungen, Fehlblockaden,
-Token-Verbrauch) — Anleitung und Label-Regeln in [evals/README.md](evals/README.md).
+Which model is better is measured by `run_sentiment_eval.py` on hand-labeled
+headlines (accuracy, macro-F1, negative headlines caught, false blocks, token usage).
+Instructions and labeling rules: [evals/README.md](evals/README.md).
 
-## GUI-Kurzanleitung (eine GUI, vier Seiten — GUI_KONZEPT.md)
+## GUI quick guide (one GUI, four pages; see GUI_KONZEPT.md)
 
-1. **Daten**: API-Schnittstellen-Übersicht (welche Quelle liefert was,
-   Konfiguration, letzte erfolgreiche Lieferung/letzter Fehler als Ampel),
-   Datenlage des Hubs (Abdeckung, Frische-Ampeln, Makro-Minicharts,
-   Abruffehler) + **manuelle Abruf-Knöpfe für jede Kategorie**: Kurse EOD,
-   aktuelle Preise, Fundamentals, FRED-Makro, Earnings, Ereignis-Kalender,
-   Corporate Actions, News-Archiv, Intraday, Universum-Snapshot.
-2. **TradeBot** (Profil "live"): Aktienquelle + Strategie(n) — auch
-   mehrere parallel mit Kapital-Budgets —, Trading-Schalter, Equity-Kurve,
-   Positionen (mit besitzender Strategie), Orders, Entscheidungs-Log.
-   Broker/Zyklus/Risiko/Keys hinter dem Zahnrad.
-3. **ValueScreener**: Universum + Algorithmus (Value/Quality/Growth-Score,
-   Piotroski F-Score, Magic Formula) wählen → "Daten aktualisieren +
-   Analyse" bzw. "Nur Analyse"; Ergebnis + Score-Historie je Titel.
-   Löst die separate MarketScreener-GUI ab.
-4. **Backtest** (Profil "test", unabhängig vom Live-Betrieb): fester
-   Zeitraum (mit Segment-Auswertung der Trades) oder randomisierte
-   Zeitfenster (Robustheits-Harness mit Marktphasen-Analyse); immer mit
-   Kosten und Risk-Schicht, Benchmark SPY.
+1. **Data**: overview of all APIs (which source provides what, configuration,
+   last successful delivery/last error as a traffic light), state of the hub
+   (coverage, freshness indicators, macro mini-charts, fetch errors) and
+   **manual fetch buttons for every category**: EOD prices, current prices,
+   fundamentals, FRED macro, earnings, event calendar, corporate actions,
+   news archive, intraday, universe snapshot.
+2. **TradeBot** (profile "live"): stock source and strategy (or several in parallel
+   with capital budgets), trading switch, equity curve, positions (with owning
+   strategy), orders, decision log. Broker/cycle/risk/keys behind the gear icon.
+3. **ValueScreener**: choose a universe and algorithm (value/quality/growth score,
+   Piotroski F-score, Magic Formula) → "update data + analysis" or "analysis only";
+   results plus score history per stock. Replaces the separate MarketScreener GUI.
+4. **Backtest** (profile "test", independent of live operation): fixed period
+   (with segment analysis of trades) or randomized time windows (robustness
+   harness with market-phase analysis); always with costs and the risk layer,
+   SPY as benchmark.
 
-## Broker & Daten
+## Broker & data
 
-| Modus | Voraussetzung | Datenquelle |
+| Mode | Requirement | Data source |
 |---|---|---|
-| Simulation (Default) | keine | Yahoo-Tagesdaten (Cache) |
-| IBKR Paper | TWS/Gateway läuft, API aktiviert, Port 7497/4002 | Yahoo (1d) oder IBKR (`fetch_bars`, auch Intraday) |
-| IBKR Live | expliziter Live-Schalter in den Einstellungen | wie Paper |
+| Simulation (default) | none | Yahoo daily data (cache) |
+| IBKR paper | TWS/Gateway running, API enabled, port 7497/4002 | Yahoo (1d) or IBKR (`fetch_bars`, incl. intraday) |
+| IBKR live | explicit live switch in the settings | same as paper |
 
-Kostenlose Yahoo-Daten reichen für Backtests und den täglichen
-Swing-Betrieb; jedes Intraday-Intervall verlangt die IBKR-Verbindung
-(Details: STRATEGIE.md §1). IBKR-Anbindung über
-[ib_async](https://github.com/ib-api-reloaded/ib_async).
+Free Yahoo data is sufficient for backtests and daily swing trading; any
+intraday interval requires the IBKR connection (details: STRATEGIE.md §1).
+IBKR integration via [ib_async](https://github.com/ib-api-reloaded/ib_async).
 
-## API-Schnittstellen (alle auf der Daten-Seite live einsehbar)
+## APIs (all visible live on the Data page)
 
-| Schnittstelle | Key | liefert |
+| API | Key | Provides |
 |---|---|---|
-| Yahoo Finance | nein | Kurse EOD + Intraday, Preis-Batch, News, Fundamentals-Fallback, Corporate Actions |
-| Financial Modeling Prep | ja (Zahnrad → API-Keys) | Fundamentals-Backfill (tiefe Historie), Earnings-Kalender, Ereignis-Kalender, Intraday-Fallback |
-| Tiingo | ja (Zahnrad → API-Keys) | Kurs-Fallback EOD, Intraday IEX (US) |
-| FRED (St. Louis Fed) | optional (empfohlen) | Makro-Reihen; ohne Key via fredgraph.csv (teils bot-gedrosselt), mit kostenlosem Key via offizieller API |
-| EZB Data Portal | nein | Fallback für Europa-Reihen (EZB-Einlagenzins, HICP) |
-| Stooq | nein | Kurs-Fallback EOD (oft blockiert) |
-| IBKR (TWS/Gateway) | Verbindung | Broker + beste Kurs-/Intraday-Quelle, wenn verbunden |
-| Wikipedia / iShares / companiesmarketcap | nein | Index-Universen, MSCI World, Global 2000 |
+| Yahoo Finance | no | EOD + intraday prices, price batch, news, fundamentals fallback, corporate actions |
+| Financial Modeling Prep | yes (gear → API-Keys) | fundamentals backfill (deep history), earnings calendar, event calendar, intraday fallback |
+| Tiingo | yes (gear → API-Keys) | EOD price fallback, intraday IEX (US) |
+| FRED (St. Louis Fed) | optional (recommended) | macro series; without key via fredgraph.csv (partly throttled), with a free key via the official API |
+| ECB Data Portal | no | fallback for European series (ECB deposit rate, HICP) |
+| Stooq | no | EOD price fallback (often blocked) |
+| IBKR (TWS/Gateway) | connection | broker and best price/intraday source when connected |
+| Anthropic (Claude) | optional | Claude sentiment model (see above) |
+| Wikipedia / iShares / companiesmarketcap | no | index universes, MSCI World, Global 2000 |
 
-Das Panel oben auf der Daten-Seite zeigt je Schnittstelle den Status:
-grün = hat zuletzt erfolgreich geliefert, rot = letzter Kontakt schlug
-fehl, gelb = nutzbar, aber kein Key hinterlegt, grau = noch nie
-kontaktiert — dazu Zeitpunkt der letzten Lieferung und die Zahl der
-Kursabrufe der laufenden Sitzung je Provider.
+The panel at the top of the Data page shows the status per API:
+green = last delivery succeeded, red = last contact failed,
+yellow = usable but no key configured, grey = never contacted, together with the
+time of the last delivery and the number of price fetches per provider in the
+current session.
 
-## Architektur
+## Architecture
 
 ```
 App/
-├── bot_gui.py               # Start: eine GUI, alle vier Seiten
-├── gui_1_daten.py           # Seite 1 einzeln öffnen
-├── gui_2_tradebot.py        # Seite 2 einzeln öffnen
-├── gui_3_valuescreener.py   # Seite 3 einzeln öffnen
-├── gui_4_backtest.py        # Seite 4 einzeln öffnen
-├── run_backtests.py         # CLI: Strategie-Suite über ein Universum
-├── run_validation.py        # CLI: Robustheits-Harness (Zufallsfenster)
-├── run_sentiment_eval.py    # CLI: FinBERT vs. Claude auf gelabelten Schlagzeilen
-├── mcp_server.py            # MCP-Server (lesender Zugriff für Claude)
-├── evals/                   # Label-Datensatz + Anleitung Sentiment-Evaluation
-├── tests/                   # unittest: Claude-Sentiment, MCP-Werkzeuge, Eval-Metriken
-├── STRATEGIE.md             # Methodik + Backtest-Protokoll (maßgeblich)
-├── GUI_KONZEPT.md           # Zielarchitektur GUI + Daten-Hub (+ Stand)
+├── bot_gui.py               # start: one GUI, all four pages
+├── gui_1_daten.py           # open page 1 on its own
+├── gui_2_tradebot.py        # open page 2 on its own
+├── gui_3_valuescreener.py   # open page 3 on its own
+├── gui_4_backtest.py        # open page 4 on its own
+├── run_backtests.py         # CLI: strategy suite over a universe
+├── run_validation.py        # CLI: robustness harness (random windows)
+├── run_sentiment_eval.py    # CLI: FinBERT vs. Claude on labeled headlines
+├── mcp_server.py            # MCP server (read-only access for Claude)
+├── evals/                   # label dataset + sentiment evaluation guide
+├── tests/                   # unittest: Claude sentiment, MCP tools, eval metrics
+├── STRATEGIE.md             # methodology + backtest protocol (authoritative, German)
+├── GUI_KONZEPT.md           # target GUI architecture + data hub (+ status, German)
 ├── tradingbot/
-│   ├── config.py            # Pfade + Einstellungen (Profile "live"/"test")
-│   ├── botdb.py             # SQLite: Entscheidungen, Orders, Equity, Stops
-│   ├── engine.py            # Zyklus: Daten → Signale → Risk → Orders
-│   │                        #   (mehrere Strategien parallel mit Budgets)
-│   ├── risk.py              # 1%-Regel, ATR-Stops, Limits, Kill-Switch
-│   ├── portfolio_backtest.py# Mehrsymbol-Backtester (identische Logik)
-│   ├── backtest.py          # Einzel-Backtester (main.py)
-│   ├── validation.py        # Robustheits-Harness + Phasen-/Segment-Analyse
-│   ├── strategies/          # Registry; neue Strategie = neue Datei
-│   ├── screening/           # Registry der Screener-Algorithmen (Seite 3)
-│   ├── broker/              # Interface + PaperBroker + IBKR (ib_async)
-│   ├── data/                # hub.py (Daten-Hub), feeds.py, fundamentals.py,
-│   │                        #   Kurse (CSV-Cache), News-Archiv, Universen
-│   ├── mcp_tools.py         # Werkzeuge des MCP-Servers (rein lesend)
-│   ├── sentiment/           # FinBERT, Claude + Sentiment-Historie (gecacht, Fallback)
+│   ├── config.py            # paths + settings (profiles "live"/"test")
+│   ├── botdb.py             # SQLite: decisions, orders, equity, stops
+│   ├── engine.py            # cycle: data → signals → risk → orders
+│   │                        #   (several strategies in parallel with budgets)
+│   ├── risk.py              # 1% rule, ATR stops, limits, kill switch
+│   ├── portfolio_backtest.py# multi-symbol backtester (identical logic)
+│   ├── backtest.py          # single-symbol backtester (main.py)
+│   ├── validation.py        # robustness harness + phase/segment analysis
+│   ├── strategies/          # registry; new strategy = new file
+│   ├── screening/           # registry of screener algorithms (page 3)
+│   ├── broker/              # interface + PaperBroker + IBKR (ib_async)
+│   ├── data/                # hub.py (data hub), feeds.py, fundamentals.py,
+│   │                        #   prices (CSV cache), news archive, universes
+│   ├── mcp_tools.py         # tools of the MCP server (read-only)
+│   ├── sentiment/           # FinBERT, Claude + sentiment history (cached, fallback)
 │   └── ui/                  # GUI: app.py + seite1_daten.py … seite4_backtest.py
-├── data_cache/              # hub.db, Kurse, News, Bot-DB, Profile (unversioniert)
-├── reports/                 # Backtest-/Screener-/News-CSVs
-└── watchlists/              # eigene Symbol-Listen
+├── data_cache/              # hub.db, prices, news, bot DB, profiles (not versioned)
+├── reports/                 # backtest/screener/news CSVs
+└── watchlists/              # custom symbol lists
 ```
 
 ## Roadmap
 
-- [x] Strategien-Framework mit GUI-editierbaren Parametern
-- [x] Risk-Management (1%-Regel, Trailing-Stops, Regime-Filter, Kill-Switch)
-- [x] Portfolio-Backtester mit Kosten
-- [x] News-Sentiment als Entry-Gate (FinBERT, lokal)
-- [x] PaperBroker (persistent) + IBKR-Adapter (Paper/Live)
-- [x] Steuerungs-GUI mit Auto-Modus
-- [x] Daten-Hub (hub.db) + eine GUI mit 4 Seiten (GUI_KONZEPT.md)
-- [x] Mehrere Strategien parallel mit Kapital-Budgets
-- [x] ValueScreener in der Bot-GUI (Screening-Registry, Hub-Datenbasis)
-- [x] Equity-Kurve als Grafik (TradeBot-Seite)
-- [x] MCP-Server: Bot-Daten und MoQu-Ranking in Claude abfragbar
-- [x] Claude als alternatives Sentiment-Modell (mit Fallback auf FinBERT)
-- [ ] Sentiment-Evaluation mit ≥200 gelabelten Schlagzeilen durchführen → Modellwahl begründen
-- [ ] Backtest-Suite über DAX/SMI/eigene Watchlists → STRATEGIE.md §4
-- [ ] Wochen im Paper-Betrieb (erst Simulation, dann IBKR Paper)
-- [ ] Screener-Ranking als Watchlist-Quelle für den Bot (Kopplung Seite 3 → Seite 2)
-- [ ] Live mit kleinem Betrag (allow_live), Kill-Switch enger
+- [x] Strategy framework with GUI-editable parameters
+- [x] Risk management (1% rule, trailing stops, regime filter, kill switch)
+- [x] Portfolio backtester with costs
+- [x] News sentiment as entry gate (FinBERT, local)
+- [x] PaperBroker (persistent) + IBKR adapter (paper/live)
+- [x] Control GUI with auto mode
+- [x] Data hub (hub.db) + one GUI with 4 pages (GUI_KONZEPT.md)
+- [x] Several strategies in parallel with capital budgets
+- [x] ValueScreener in the bot GUI (screening registry, hub data)
+- [x] Equity curve chart (TradeBot page)
+- [x] MCP server: bot data and MoQu ranking queryable from Claude
+- [x] Claude as alternative sentiment model (with fallback to FinBERT)
+- [ ] Run the sentiment evaluation with ≥200 labeled headlines → justify the model choice
+- [ ] Backtest suite over DAX/SMI/custom watchlists → STRATEGIE.md §4
+- [ ] Weeks of paper trading (simulation first, then IBKR paper)
+- [ ] Screener ranking as watchlist source for the bot (link page 3 → page 2)
+- [ ] Live with a small amount (allow_live), tighter kill switch
 
-**Disclaimer:** Experimentier- und Lernprojekt. Keine Anlageberatung;
-Live-Handel nur mit Geld, dessen Verlust verkraftbar ist.
+**Disclaimer:** Experimental learning project. Not investment advice;
+live trading only with money you can afford to lose.

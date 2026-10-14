@@ -1,32 +1,46 @@
-# Trading-Werkzeuge
+# Trading Tools
 
-Ein aktives Projekt, ein Archiv:
+A personal equity trading and research platform in Python: data hub, pluggable
+strategies, a mandatory risk-management layer, backtesting, screening and broker
+integration (built-in simulator or Interactive Brokers), all driven from one desktop GUI.
+Built end-to-end with Claude Code.
 
-| Ordner | Inhalt | Start |
+## Claude integration
+
+Claude is integrated in three places, all optional (without an Anthropic API key
+everything runs as before):
+
+| Component | What it does | Details |
 |---|---|---|
-| [`App/`](App) | **Das aktive Projekt**: eine GUI mit vier Seiten (Daten · TradeBot · ValueScreener · Backtest) über einem gemeinsamen Daten-Hub; Handelsstrategien + Risk-Management, Backtests/Robustheits-Harness, Screening, Broker-Anbindung (Paper/IBKR) | `cd App && uv run bot_gui.py` |
-| [`_archiv/MarketScreener/`](_archiv/MarketScreener) | Ursprüngliches Screener-Tool — abgelöst durch die ValueScreener-Seite; Daten in den Hub migriert, Code als Referenz archiviert (venv entfernt; `uv run` legt bei Bedarf ein neues an) | — |
+| **MCP server** | Read-only MCP server with 7 tools that makes the data hub, news archive, strategy ranking and bot log queryable from Claude Desktop or Claude Code ("Why did the strategy pick these stocks this month?") | [App/README.md → MCP server](App/README.md#1-mcp-server-ask-claude-about-the-bot) · [`mcp_server.py`](App/mcp_server.py) · [`mcp_tools.py`](App/tradingbot/mcp_tools.py) |
+| **Claude as sentiment model** | Drop-in alternative to FinBERT for the news gate: company-aware ratings with a reason per headline, structured output via forced tool use, prompt-injection safeguards, automatic fallback to FinBERT | [App/README.md → Sentiment](App/README.md#2-claude-as-sentiment-model-alternative-to-finbert) · [`sentiment/claude.py`](App/tradingbot/sentiment/claude.py) |
+| **Evaluation** | Harness comparing FinBERT and Claude on hand-labeled headlines (accuracy, macro-F1, missed negatives, false blocks, Cohen's κ, token cost) | [App/evals/README.md](App/evals/README.md) · [`run_sentiment_eval.py`](App/run_sentiment_eval.py) |
 
-Claude-Integration (optional): ein MCP-Server macht Bot-Daten und MoQu-Ranking in
-Claude abfragbar, Claude kann FinBERT als Sentiment-Modell ersetzen — inklusive
-Evaluation beider Modelle. Details: [App/README.md](App/README.md#claude-integration).
+Unit tests for all three live in [`App/tests/`](App/tests).
 
-Einzelne GUI-Seiten lassen sich auch separat öffnen:
-`gui_1_daten.py` … `gui_4_backtest.py` im App-Ordner.
+## Repository layout
 
-Maßgebliche Methodik-Dokumente (beide in `App/`):
-[`STRATEGIE.md`](App/STRATEGIE.md) (Handel/Risiko) und
-[`ANALYSE.md`](App/ANALYSE.md) (Screening-Score).
-Die Zielarchitektur der GUI und der Umsetzungsstand stehen in
-[`GUI_KONZEPT.md`](App/GUI_KONZEPT.md); alle Datenquellen/API-Schnittstellen
-sind dort und auf der Daten-Seite der GUI dokumentiert.
+| Folder | Contents | Start |
+|---|---|---|
+| [`App/`](App) | **The active project**: one GUI with four pages (Data · TradeBot · ValueScreener · Backtest) on top of a shared data hub; trading strategies + risk management, backtests/robustness harness, screening, broker integration (paper/IBKR), Claude integration | `cd App && uv run bot_gui.py` |
+| [`_archiv/MarketScreener/`](_archiv/MarketScreener) | Original screener tool, superseded by the ValueScreener page; data migrated into the hub, code kept for reference | — |
 
-Hinweis: Wer den Tageszyklus über die Windows-Aufgabenplanung eingerichtet
-hat (run_cycle.bat), muss den Pfad dort einmalig auf `App\run_cycle.bat`
-anpassen (Ordner hieß früher `TradingBot\`).
+Individual GUI pages can also be opened on their own:
+`gui_1_daten.py` … `gui_4_backtest.py` in the `App/` folder.
 
-## Haftungsausschluss
+Methodology documents (in `App/`, currently in German):
+[`STRATEGIE.md`](App/STRATEGIE.md) (trading and risk) and
+[`ANALYSE.md`](App/ANALYSE.md) (screening score).
+The target GUI architecture and implementation status are in
+[`GUI_KONZEPT.md`](App/GUI_KONZEPT.md); all data sources and APIs are documented
+there and on the Data page of the GUI.
 
-Dies ist ein Experimentier- und Lernprojekt. **Keine Anlageberatung.**
-Backtest-Ergebnisse sind keine Garantie für künftige Renditen. Die Nutzung –
-insbesondere mit echtem Geld – erfolgt auf eigenes Risiko.
+Note: if you scheduled the daily cycle via Windows Task Scheduler
+(`run_cycle.bat`), update the path once to `App\run_cycle.bat`
+(the folder used to be called `TradingBot\`).
+
+## Disclaimer
+
+This is an experimental learning project. **Not investment advice.**
+Backtest results do not guarantee future returns. Use, especially with real
+money, is entirely at your own risk.
