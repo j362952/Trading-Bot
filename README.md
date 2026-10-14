@@ -20,3 +20,9 @@ sind dort und auf der Daten-Seite der GUI dokumentiert.
 Hinweis: Wer den Tageszyklus über die Windows-Aufgabenplanung eingerichtet
 hat (run_cycle.bat), muss den Pfad dort einmalig auf `App\run_cycle.bat`
 anpassen (Ordner hieß früher `TradingBot\`).
+
+## Haftungsausschluss
+
+Dies ist ein Experimentier- und Lernprojekt. **Keine Anlageberatung.**
+Backtest-Ergebnisse sind keine Garantie für künftige Renditen. Die Nutzung –
+insbesondere mit echtem Geld – erfolgt auf eigenes Risiko.
